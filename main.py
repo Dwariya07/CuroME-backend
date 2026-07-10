@@ -10,7 +10,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="CuroME API")
 
 # --- Registration Endpoint ---
-@app.post("/auth/register", response_model=schemas.UserResponse)
+@app.post("/auth/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     # 1. Check if email already exists
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
@@ -21,6 +21,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     hashed_pw = auth.hash_password(user.password)
     
     # 3. Create user object
+    # We map the new fields (specialization, license_number, linked_patient_id)
     new_user = models.User(
         email=user.email,
         hashed_password=hashed_pw,
@@ -29,8 +30,11 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         age=user.age,
         gender=user.gender,
         phone=user.phone,
+        specialization=user.specialization,
+        license_number=user.license_number,
+        linked_patient_id=user.linked_patient_id,
         # Generate patient_id if role is patient
-        patient_id=f"PAT-{user.name[:3].upper()}{user.age or 0}" if user.role == "patient" else None
+        patient_id=f"PAT-{user.name[:3].upper()}{user.age or 0}" if user.role == schemas.RoleEnum.PATIENT else None
     )
     
     db.add(new_user)
